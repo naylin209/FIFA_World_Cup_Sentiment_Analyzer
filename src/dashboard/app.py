@@ -9,7 +9,7 @@ if _ROOT_PATH not in sys.path:
     sys.path.insert(0, _ROOT_PATH)
 
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, ctx, dcc, html, no_update
+from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
 
 from src.database.db import create_table, get_bluesky_posts, get_recent_tweets, get_sentiment_counts, get_sentiment_by_match, get_existing_uris
 from src.collector.football_collector import fetch_matches, fetch_top_scorers, match_status_label

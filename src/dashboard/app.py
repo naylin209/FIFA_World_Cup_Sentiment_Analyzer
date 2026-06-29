@@ -415,7 +415,20 @@ def _build_live_feed_content() -> list:
                     [_bi("box-arrow-up-right"), " View on Bluesky"],
                     href=_bsky_url(p.get("source_uri", "")),
                     target="_blank",
-                    style={"fontSize": "0.75rem", "opacity": "0.6", "marginTop": "0.6rem", "display": "inline-block"},
+                    style={
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                        "gap": "0.35rem",
+                        "marginTop": "0.75rem",
+                        "padding": "0.35rem 0.85rem",
+                        "border": "1px solid rgba(255,255,255,0.25)",
+                        "borderRadius": "6px",
+                        "color": "rgba(255,255,255,0.75)",
+                        "fontSize": "0.75rem",
+                        "textDecoration": "none",
+                        "background": "rgba(255,255,255,0.05)",
+                        "transition": "all 0.2s ease",
+                    },
                 ) if _bsky_url(p.get("source_uri", "")) else None,
             ])
             for p in posts

@@ -572,10 +572,124 @@ body {
   font-size: 0.875rem;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.75);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+
+/* ─── Mobile header ─────────────────────────────────────────────────── */
+
+.mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10, 16, 24, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-header-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(245, 245, 245, 0.95);
+  letter-spacing: -0.01em;
+}
+
+.mobile-header-sub {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+@media (min-width: 1024px) {
+  .mobile-header { display: none; }
+}
+
+/* ─── Hamburger button ──────────────────────────────────────────────── */
+
+.hamburger-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.hamburger-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.hamburger-btn .bi {
+  font-size: 1.2rem;
+}
+
+/* ─── Drawer overlay ────────────────────────────────────────────────── */
+
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.drawer-overlay.visible {
+  display: block;
+}
+
+/* ─── Sidebar as drawer on mobile ───────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    z-index: 100;
+    margin: 0;
+    border-radius: 0 16px 16px 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.drawer-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-footer {
+    display: flex;
+  }
+}
+
+/* ─── Match cards — mobile ──────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .match-team {
+    font-size: 0.8rem;
+  }
+
+  .match-center {
+    min-width: 72px;
+  }
+
+  .match-score {
+    font-size: 1.05rem;
+  }
+
+  .match-card {
+    padding: 0.75rem 1rem;
+  }
 }
 
 /* ── Match cards ─────────────────────────────────────────────────────────── */

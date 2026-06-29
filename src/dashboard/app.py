@@ -54,8 +54,28 @@ def _bsky_url(at_uri: str) -> str | None:
 
 # ─── Layout components ────────────────────────────────────────────────────────
 
+def _mobile_header() -> html.Div:
+    return html.Div(className="mobile-header", children=[
+        html.Button(
+            _bi("list"),
+            id="hamburger-btn",
+            n_clicks=0,
+            className="hamburger-btn",
+        ),
+        html.Div([
+            html.P("Sentiment Tracker", className="mobile-header-title"),
+            html.P("World Cup 2026", className="mobile-header-sub"),
+        ], style={"textAlign": "center"}),
+        html.Div(
+            [html.Span(className="live-dot")],
+            style={"width": "38px", "display": "flex", "justifyContent": "center"},
+        ),
+    ])
+
+
 def _sidebar() -> html.Aside:
     return html.Aside(
+        id="sidebar",
         className="sidebar glass",
         children=[
             html.Div(className="sidebar-header", children=[
@@ -177,8 +197,11 @@ app.layout = html.Div(
         html.Div(className="bg-image"),
         html.Div(className="bg-overlay"),
         dcc.Store(id="active-tab", data="Dashboard"),
+        dcc.Store(id="drawer-open", data=False),
         dcc.Interval(id="refresh",      interval=30_000, n_intervals=0),
         dcc.Interval(id="live-refresh", interval=10_000, n_intervals=0),
+        html.Div(id="drawer-overlay", className="drawer-overlay", n_clicks=0),
+        _mobile_header(),
         html.Div(className="app-body", children=[
             _sidebar(),
             html.Main(className="main-content", children=[
@@ -557,6 +580,32 @@ def _build_matches_content() -> list:
 
 
 # ─── Callbacks ────────────────────────────────────────────────────────────────
+
+@app.callback(
+    Output("drawer-open", "data"),
+    Input("hamburger-btn", "n_clicks"),
+    Input("drawer-overlay", "n_clicks"),
+    [Input(btn_id, "n_clicks") for _, _, btn_id in NAV_ITEMS],
+    State("drawer-open", "data"),
+    prevent_initial_call=True,
+)
+def toggle_drawer(*args):
+    is_open = args[-1]
+    if ctx.triggered_id == "hamburger-btn":
+        return not is_open
+    return False
+
+
+@app.callback(
+    Output("sidebar", "className"),
+    Output("drawer-overlay", "className"),
+    Input("drawer-open", "data"),
+)
+def update_drawer_classes(is_open: bool):
+    sidebar_cls = "sidebar glass" + (" drawer-open" if is_open else "")
+    overlay_cls = "drawer-overlay" + (" visible" if is_open else "")
+    return sidebar_cls, overlay_cls
+
 
 @app.callback(
     Output("active-tab", "data"),

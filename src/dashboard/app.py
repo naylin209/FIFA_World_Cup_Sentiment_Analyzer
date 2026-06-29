@@ -156,6 +156,7 @@ def _flag(team_name: str) -> html.Span:
 app = Dash(
     __name__,
     title="FIFA Sentiment Tracker",
+    update_title=None,
     assets_folder=os.path.join(_ROOT, "assets"),
     external_stylesheets=[BI_CDN, FLAG_CDN],
 )

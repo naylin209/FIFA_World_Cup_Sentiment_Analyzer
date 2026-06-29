@@ -1,0 +1,15 @@
+praw==8.0.2
+transformers==5.12.1
+torch==2.12.1
+dash==4.3.0
+plotly==6.8.0
+pandas==3.0.3
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+fastapi==0.138.1
+uvicorn==0.49.0
+requests==2.34.2
+langdetect==1.0.9
+tiktoken
+sentencepiece
+protobuf

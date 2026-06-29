@@ -140,14 +140,14 @@ def get_bluesky_posts(limit: int = 20) -> list[dict]:
     with _db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT comment_text, sentiment, confidence, created_at
+                SELECT comment_text, sentiment, confidence, created_at, source_uri
                 FROM match_sentiments
                 WHERE source = 'bluesky'
                 ORDER BY created_at DESC
                 LIMIT %s
             """, (limit,))
             return [
-                {"comment_text": r[0], "sentiment": r[1], "confidence": r[2], "created_at": r[3]}
+                {"comment_text": r[0], "sentiment": r[1], "confidence": r[2], "created_at": r[3], "source_uri": r[4]}
                 for r in cur.fetchall()
             ]
 

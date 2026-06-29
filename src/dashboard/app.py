@@ -41,6 +41,17 @@ def _bi(name: str, cls: str = "") -> html.I:
     return html.I(className=f"bi bi-{name} {cls}".strip())
 
 
+def _bsky_url(at_uri: str) -> str | None:
+    if not at_uri or not at_uri.startswith("at://"):
+        return None
+    try:
+        parts = at_uri.replace("at://", "").split("/")
+        did, rkey = parts[0], parts[-1]
+        return f"https://bsky.app/profile/{did}/post/{rkey}"
+    except Exception:
+        return None
+
+
 # ─── Layout components ────────────────────────────────────────────────────────
 
 def _sidebar() -> html.Aside:
@@ -388,7 +399,7 @@ def _build_live_feed_content() -> list:
     else:
         status_text = f"Last updated {now} · {len(posts)} posts"
         post_items = [
-            html.Li(className=f"tweet-item tweet-item-{p['sentiment']}", children=[
+            html.Li(className=f"tweet-item tweet-item-{p['sentiment']}", style={"padding": "1.2rem 1.4rem"}, children=[
                 html.Div(className="tweet-item-top", children=[
                     html.Span(
                         f"{round(p['confidence'] * 100)}% {p['sentiment']}",
@@ -399,7 +410,13 @@ def _build_live_feed_content() -> list:
                         className="tweet-confidence",
                     ),
                 ]),
-                html.P(str(p["comment_text"])[:300], className="tweet-text"),
+                html.P(str(p["comment_text"]), className="tweet-text", style={"whiteSpace": "pre-wrap", "lineHeight": "1.6", "marginTop": "0.6rem"}),
+                html.A(
+                    [_bi("box-arrow-up-right"), " View on Bluesky"],
+                    href=_bsky_url(p.get("source_uri", "")),
+                    target="_blank",
+                    style={"fontSize": "0.75rem", "opacity": "0.6", "marginTop": "0.6rem", "display": "inline-block"},
+                ) if _bsky_url(p.get("source_uri", "")) else None,
             ])
             for p in posts
         ]

@@ -26,7 +26,6 @@ NAV_ITEMS = [
     ("Dashboard", "grid",      "nav-dashboard"),
     ("Matches",   "calendar3", "nav-matches"),
     ("Live Feed", "broadcast", "nav-live-feed"),
-    ("Settings",  "gear",      "nav-settings"),
 ]
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -527,24 +526,6 @@ def _build_matches_content() -> list:
     return sections
 
 
-def _build_settings_content() -> list:
-    return [
-        html.Div(
-            className="glass tweet-panel",
-            style={"textAlign": "center", "padding": "3rem 2rem"},
-            children=[
-                html.Div(_bi("gear"), style={"fontSize": "2.5rem", "opacity": "0.5", "marginBottom": "1rem"}),
-                html.H2("Settings", className="panel-title"),
-                html.P(
-                    "Dashboard configuration — refresh rate, data sources, and theme options.",
-                    className="panel-sub",
-                    style={"maxWidth": "380px", "margin": "0.75rem auto 0"},
-                ),
-            ],
-        ),
-    ]
-
-
 # ─── Callbacks ────────────────────────────────────────────────────────────────
 
 @app.callback(
@@ -587,7 +568,6 @@ def render_page(active_tab: str, _refresh, _live):
         "Dashboard": _build_dashboard_content,
         "Live Feed":  _build_live_feed_content,
         "Matches":    _build_matches_content,
-        "Settings":   _build_settings_content,
     }
     return builders.get(active_tab, _build_dashboard_content)()
 

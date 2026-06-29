@@ -8,3 +8,4 @@ data/*.csv
 dist/
 build/
 .pytest_cache/
+.claude

@@ -683,4 +683,4 @@ def _start_reddit_thread() -> None:
 if __name__ == "__main__":
     create_table()
     _start_bluesky_thread()
-    app.run(debug=True, port=8050, use_reloader=False)
+    app.run(debug=False, port=8050, use_reloader=False)

@@ -157,6 +157,30 @@ def get_bluesky_posts(limit: int = 20) -> list[dict]:
             ]
 
 
+def get_sentiment_timeline(hours: int | None = 24) -> list[tuple]:
+    """Hourly sentiment counts for the trailing N hours (None = full history).
+
+    Excludes kaggle rows: their created_at is the pipeline insert time, not the
+    tweet time, so they would show up as one misleading spike.
+    Returns (bucket_start, sentiment, count) rows ordered by bucket.
+    """
+    where = "WHERE source <> 'kaggle'"
+    params: tuple = ()
+    if hours is not None:
+        where += " AND created_at >= NOW() - %s * INTERVAL '1 hour'"
+        params = (hours,)
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT date_trunc('hour', created_at) AS bucket, sentiment, COUNT(*)
+                FROM match_sentiments
+                {where}
+                GROUP BY bucket, sentiment
+                ORDER BY bucket
+            """, params)
+            return cur.fetchall()
+
+
 def get_sentiment_by_match() -> list:
     with _db() as conn:
         with conn.cursor() as cur:

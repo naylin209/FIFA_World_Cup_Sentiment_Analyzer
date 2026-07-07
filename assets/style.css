@@ -773,3 +773,51 @@ body {
 .match-status-live  { background: rgba(231, 76, 60, 0.2);  color: #e74c3c; animation: pulse 1.5s infinite; }
 .match-status-ft    { background: rgba(149,165,166, 0.15); color: rgba(255,255,255,0.45); }
 .match-status-sched { background: rgba(255,255,255, 0.08); color: rgba(255,255,255,0.5); }
+
+/* ─── Timeline range dropdown ───────────────────────────────────────── */
+
+.timeline-range-dd {
+  width: 175px;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.timeline-range-dd .Select-control {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.8);
+  height: 34px;
+}
+
+.timeline-range-dd .Select-value-label,
+.timeline-range-dd .Select-placeholder {
+  color: rgba(255, 255, 255, 0.8) !important;
+  line-height: 32px !important;
+}
+
+.timeline-range-dd .Select-arrow {
+  border-top-color: rgba(255, 255, 255, 0.5);
+}
+
+.timeline-range-dd .Select-menu-outer {
+  background: rgba(22, 27, 45, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.timeline-range-dd .Select-option {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.timeline-range-dd .Select-option.is-focused {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.timeline-range-dd .Select-option.is-selected {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}

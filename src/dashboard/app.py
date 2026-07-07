@@ -11,7 +11,7 @@ if _ROOT_PATH not in sys.path:
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
 
-from src.database.db import create_table, get_bluesky_posts, get_recent_tweets, get_sentiment_counts, get_sentiment_by_match, get_existing_uris
+from src.database.db import create_table, get_bluesky_posts, get_recent_tweets, get_sentiment_counts, get_sentiment_timeline, get_existing_uris
 from src.collector.football_collector import fetch_matches, fetch_top_scorers, match_status_label
 
 # ─── Constants ───────────────────────────────────────────────────────────────
@@ -189,6 +189,8 @@ app = Dash(
     update_title=None,
     assets_folder=os.path.join(_ROOT, "assets"),
     external_stylesheets=[BI_CDN, FLAG_CDN],
+    # timeline-range dropdown is created inside page-content at runtime
+    suppress_callback_exceptions=True,
 )
 
 app.layout = html.Div(
@@ -198,6 +200,7 @@ app.layout = html.Div(
         html.Div(className="bg-overlay"),
         dcc.Store(id="active-tab", data="Dashboard"),
         dcc.Store(id="drawer-open", data=False),
+        dcc.Store(id="timeline-range-store", data=24),  # hours; 0 = full history
         dcc.Interval(id="refresh",      interval=30_000, n_intervals=0),
         dcc.Interval(id="live-refresh", interval=10_000, n_intervals=0),
         html.Div(id="drawer-overlay", className="drawer-overlay", n_clicks=0),
@@ -277,6 +280,63 @@ def _build_donut(labels, values, colors_list, dominant_label, dominant_color, do
     return fig
 
 
+def _build_timeline_figure(rows: list[tuple]) -> go.Figure:
+    """Hourly sentiment lines. rows = (bucket_dt, sentiment, count)."""
+    fig = go.Figure()
+    if not rows:
+        fig.add_annotation(
+            text="No posts in this window yet",
+            x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False,
+            font=dict(size=13, color="rgba(255,255,255,0.5)", family="system-ui,sans-serif"),
+        )
+    else:
+        buckets = sorted({r[0] for r in rows})
+        idx = {b: i for i, b in enumerate(buckets)}
+        series = {s: [0] * len(buckets) for s in ("positive", "negative", "neutral")}
+        for bucket, sentiment, count in rows:
+            if sentiment in series:
+                series[sentiment][idx[bucket]] = count
+        for name in ("positive", "negative", "neutral"):
+            fig.add_trace(go.Scatter(
+                x=buckets,
+                y=series[name],
+                name=name.capitalize(),
+                mode="lines",
+                line=dict(color=COLORS[name], width=2, shape="spline", smoothing=0.6),
+                hovertemplate="%{y} " + name + "<extra></extra>",
+            ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=8, t=8, b=0),
+        height=280,
+        hovermode="x unified",
+        hoverlabel=dict(bgcolor="rgba(20,25,40,0.95)", font=dict(color="rgba(255,255,255,0.85)", size=12)),
+        legend=dict(
+            orientation="h", x=0, y=1.15,
+            font=dict(size=11, color="rgba(255,255,255,0.7)", family="system-ui,sans-serif"),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        xaxis=dict(
+            color="rgba(255,255,255,0.45)", gridcolor="rgba(255,255,255,0.06)",
+            showline=False, zeroline=False,
+        ),
+        yaxis=dict(
+            color="rgba(255,255,255,0.45)", gridcolor="rgba(255,255,255,0.08)",
+            zeroline=False, rangemode="tozero",
+        ),
+        font=dict(family="system-ui,sans-serif"),
+    )
+    return fig
+
+
+TIMELINE_RANGES = [
+    {"label": "Last 24 hours",   "value": 24},
+    {"label": "Last 7 days",     "value": 168},
+    {"label": "Full tournament", "value": 0},
+]
+
+
 # ─── Match card helper ────────────────────────────────────────────────────────
 
 def _match_card(match: dict) -> html.Div:
@@ -311,7 +371,7 @@ def _match_card(match: dict) -> html.Div:
 
 # ─── Page builders ────────────────────────────────────────────────────────────
 
-def _build_dashboard_content() -> list:
+def _build_dashboard_content(range_hours: int = 24) -> list:
     counts = get_sentiment_counts()
     pos = counts.get("positive", 0)
     neg = counts.get("negative", 0)
@@ -369,8 +429,31 @@ def _build_dashboard_content() -> list:
         for t in tweets
     ]
 
+    timeline_rows = get_sentiment_timeline(hours=range_hours or None)
+
     return [
         html.Div(stat_cards, className="stat-cards-grid"),
+        html.Div(className="glass chart-panel", children=[
+            html.Div(className="panel-header", children=[
+                html.Div([
+                    html.H2("Sentiment Over Time", className="panel-title"),
+                    html.P("Hourly fan mood as the tournament unfolds", className="panel-sub"),
+                ]),
+                dcc.Dropdown(
+                    id="timeline-range",
+                    options=TIMELINE_RANGES,
+                    value=range_hours,
+                    clearable=False,
+                    searchable=False,
+                    className="timeline-range-dd",
+                ),
+            ]),
+            dcc.Graph(
+                figure=_build_timeline_figure(timeline_rows),
+                config={"displayModeBar": False},
+                style={"width": "100%", "background": "transparent"},
+            ),
+        ]),
         html.Div(className="glass chart-panel", children=[
             html.Div(className="panel-header", children=[
                 html.Div([
@@ -633,8 +716,9 @@ def update_nav_classes(active_tab: str):
     Input("active-tab", "data"),
     Input("refresh",      "n_intervals"),
     Input("live-refresh", "n_intervals"),
+    Input("timeline-range-store", "data"),
 )
-def render_page(active_tab: str, _refresh, _live):
+def render_page(active_tab: str, _refresh, _live, range_hours):
     triggered = ctx.triggered_id or "active-tab"
 
     # Skip irrelevant interval ticks to avoid unnecessary DB queries
@@ -642,13 +726,24 @@ def render_page(active_tab: str, _refresh, _live):
         return no_update
     if triggered == "refresh" and active_tab not in ("Dashboard", "Matches"):
         return no_update
+    if triggered == "timeline-range-store" and active_tab != "Dashboard":
+        return no_update
 
-    builders = {
-        "Dashboard": _build_dashboard_content,
-        "Live Feed":  _build_live_feed_content,
-        "Matches":    _build_matches_content,
-    }
-    return builders.get(active_tab, _build_dashboard_content)()
+    if active_tab == "Live Feed":
+        return _build_live_feed_content()
+    if active_tab == "Matches":
+        return _build_matches_content()
+    return _build_dashboard_content(range_hours if range_hours is not None else 24)
+
+
+@app.callback(
+    Output("timeline-range-store", "data"),
+    Input("timeline-range", "value"),
+    prevent_initial_call=True,
+)
+def set_timeline_range(value):
+    # Persist the selection app-side so the 30s full-page rebuild doesn't reset it
+    return value if value is not None else 24
 
 
 # ─── Background Bluesky collector ─────────────────────────────────────────────

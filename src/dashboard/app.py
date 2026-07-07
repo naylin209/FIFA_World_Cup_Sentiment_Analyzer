@@ -10,8 +10,9 @@ if _ROOT_PATH not in sys.path:
 
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
+from flask import jsonify
 
-from src.database.db import create_table, get_bluesky_posts, get_recent_tweets, get_sentiment_counts, get_sentiment_timeline, get_existing_uris
+from src.database.db import create_table, get_bluesky_posts, get_feed_lag_seconds, get_recent_tweets, get_sentiment_counts, get_sentiment_timeline, get_existing_uris
 from src.collector.football_collector import fetch_matches, fetch_top_scorers, match_status_label
 
 # ─── Constants ───────────────────────────────────────────────────────────────
@@ -192,6 +193,51 @@ app = Dash(
     # timeline-range dropdown is created inside page-content at runtime
     suppress_callback_exceptions=True,
 )
+
+# ─── Health check ─────────────────────────────────────────────────────────────
+# Guardrail for the stale-feed incident: an uptime monitor pointed at /health
+# gets a 503 the moment the feed stops moving, instead of us noticing days later.
+
+# Bluesky polls every 30s, but quiet stretches between matches are normal —
+# only alert after 30 minutes of silence.
+FEED_STALE_SECONDS = int(os.getenv("FEED_STALE_SECONDS", "1800"))
+
+
+@app.server.route("/health")
+def health():
+    checks: dict = {}
+    healthy = True
+
+    try:
+        lag = get_feed_lag_seconds("bluesky")
+        checks["db"] = "ok"
+        if lag is None:
+            checks["feed"] = {"status": "empty", "lag_seconds": None}
+            healthy = False
+        elif lag > FEED_STALE_SECONDS:
+            checks["feed"] = {"status": "stale", "lag_seconds": round(lag)}
+            healthy = False
+        else:
+            checks["feed"] = {"status": "fresh", "lag_seconds": round(lag)}
+    except Exception as exc:
+        print(f"[health] db check failed: {exc}")
+        checks["db"] = "error"
+        checks["feed"] = {"status": "unknown", "lag_seconds": None}
+        healthy = False
+
+    collector_alive = any(
+        t.name == "bluesky-poller" and t.is_alive() for t in threading.enumerate()
+    )
+    checks["collector_thread"] = "alive" if collector_alive else "dead"
+    if not collector_alive:
+        healthy = False
+
+    return jsonify({
+        "status": "ok" if healthy else "degraded",
+        "stale_threshold_seconds": FEED_STALE_SECONDS,
+        "checks": checks,
+    }), (200 if healthy else 503)
+
 
 app.layout = html.Div(
     className="app-root",

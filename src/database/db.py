@@ -181,6 +181,23 @@ def get_sentiment_timeline(hours: int | None = 24) -> list[tuple]:
             return cur.fetchall()
 
 
+def get_feed_lag_seconds(source: str = "bluesky") -> float | None:
+    """Seconds since the newest row for a live source (None = no rows yet).
+
+    Computed in SQL so a Python/Postgres clock or timezone mismatch can't
+    skew the freshness check.
+    """
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT EXTRACT(EPOCH FROM (NOW() - MAX(created_at))) "
+                "FROM match_sentiments WHERE source = %s",
+                (source,),
+            )
+            row = cur.fetchone()
+            return float(row[0]) if row and row[0] is not None else None
+
+
 def get_sentiment_by_match() -> list:
     with _db() as conn:
         with conn.cursor() as cur:

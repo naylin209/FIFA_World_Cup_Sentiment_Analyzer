@@ -74,6 +74,11 @@ def create_table() -> None:
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS idx_match_title ON match_sentiments(match_title)"
             )
+            # Feed queries all do ORDER BY created_at DESC LIMIT n — without this
+            # index they re-sort the whole table on every dashboard refresh.
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_created_at ON match_sentiments(created_at DESC)"
+            )
     print("Table ready.")
 
 

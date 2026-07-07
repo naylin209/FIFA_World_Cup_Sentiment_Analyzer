@@ -8,6 +8,7 @@ psycopg2-binary==2.9.12
 python-dotenv==1.2.2
 fastapi==0.138.1
 uvicorn==0.49.0
+gunicorn==23.0.0
 requests==2.34.2
 langdetect==1.0.9
 tiktoken

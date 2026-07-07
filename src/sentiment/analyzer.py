@@ -11,9 +11,11 @@ def get_pipeline():
     if _sentiment_pipeline is None:
         try:
             print("Loading model (first time takes ~30 seconds, cached after)...")
+            # English-only model: ~half the RAM of the multilingual XLM variant,
+            # which was pushing the 1GB EC2 box deep into swap.
             _sentiment_pipeline = pipeline(
                 "sentiment-analysis",
-                model="cardiffnlp/twitter-xlm-roberta-base-sentiment",
+                model="cardiffnlp/twitter-roberta-base-sentiment-latest",
                 max_length=512,
                 truncation=True,
             )
@@ -37,6 +39,24 @@ def analyze_sentiment(text: str) -> dict:
     except Exception as exc:
         print(f"[analyzer] scoring error: {exc!r} — text: {str(text)[:80]!r}")
         return {"sentiment": "neutral", "confidence": 0.0}
+
+
+def analyze_batch(texts: list[str]) -> list[dict]:
+    """Score many texts in one pipeline call — much faster than per-text calls."""
+    if not texts:
+        return []
+    pipe = get_pipeline()
+    if pipe is None:
+        return [{"sentiment": "neutral", "confidence": 0.0} for _ in texts]
+    try:
+        results = pipe([str(t) for t in texts], batch_size=8)
+        return [
+            {"sentiment": r["label"], "confidence": round(r["score"], 4)}
+            for r in results
+        ]
+    except Exception as exc:
+        print(f"[analyzer] batch scoring error: {exc!r} — falling back to per-text")
+        return [analyze_sentiment(t) for t in texts]
 
 
 def analyze_dataframe(df, text_column: str):

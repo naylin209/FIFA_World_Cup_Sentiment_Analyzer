@@ -655,7 +655,7 @@ def render_page(active_tab: str, _refresh, _live):
 
 def _bluesky_poll_loop() -> None:
     from src.collector.bluesky_collector import fetch_posts
-    from src.sentiment.analyzer import analyze_sentiment
+    from src.sentiment.analyzer import analyze_batch
     from src.database.db import insert_batch
 
     seen_uris: set[str] = get_existing_uris("bluesky")
@@ -666,6 +666,7 @@ def _bluesky_poll_loop() -> None:
             raw = fetch_posts(limit=25)
             new_posts = [p for p in raw if p["uri"] not in seen_uris]
             if new_posts:
+                results = analyze_batch([p["comment_text"] for p in new_posts])
                 scored = [
                     {
                         "comment_text": p["comment_text"],
@@ -673,9 +674,9 @@ def _bluesky_poll_loop() -> None:
                         "source":       "bluesky",
                         "source_uri":   p["uri"],
                         "created_at":   p.get("created_at"),
-                        **analyze_sentiment(p["comment_text"]),
+                        **res,
                     }
-                    for p in new_posts
+                    for p, res in zip(new_posts, results)
                 ]
                 valid = [s for s in scored if s["confidence"] > 0.0]
                 if valid:
@@ -700,7 +701,7 @@ def _start_bluesky_thread() -> None:
 
 def _reddit_poll_loop() -> None:
     from src.collector.reddit_collector import fetch_posts as reddit_fetch
-    from src.sentiment.analyzer import analyze_sentiment
+    from src.sentiment.analyzer import analyze_batch
     from src.database.db import insert_batch
 
     seen_uris: set[str] = get_existing_uris("reddit")
@@ -711,6 +712,7 @@ def _reddit_poll_loop() -> None:
             raw = reddit_fetch(limit=25)
             new_posts = [p for p in raw if p["uri"] not in seen_uris]
             if new_posts:
+                results = analyze_batch([p["comment_text"] for p in new_posts])
                 scored = [
                     {
                         "comment_text": p["comment_text"],
@@ -718,9 +720,9 @@ def _reddit_poll_loop() -> None:
                         "source":       "reddit",
                         "source_uri":   p["uri"],
                         "created_at":   p.get("created_at"),
-                        **analyze_sentiment(p["comment_text"]),
+                        **res,
                     }
-                    for p in new_posts
+                    for p, res in zip(new_posts, results)
                 ]
                 insert_batch(scored)
                 seen_uris.update(p["uri"] for p in new_posts)
@@ -740,7 +742,13 @@ def _start_reddit_thread() -> None:
 
 # ─── Entry ────────────────────────────────────────────────────────────────────
 
+# WSGI entrypoint for gunicorn: gunicorn -w 1 --threads 4 src.dashboard.app:server
+# Keep -w 1: each worker would load its own copy of the model and duplicate the
+# background collectors.
+server = app.server
+
+create_table()
+_start_bluesky_thread()
+
 if __name__ == "__main__":
-    create_table()
-    _start_bluesky_thread()
     app.run(debug=False, host="0.0.0.0", port=8050, use_reloader=False)

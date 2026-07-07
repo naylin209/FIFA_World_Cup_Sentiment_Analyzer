@@ -742,13 +742,14 @@ def _start_reddit_thread() -> None:
 
 # ─── Entry ────────────────────────────────────────────────────────────────────
 
-# WSGI entrypoint for gunicorn: gunicorn -w 1 --threads 4 src.dashboard.app:server
-# Keep -w 1: each worker would load its own copy of the model and duplicate the
-# background collectors.
-server = app.server
+def init_app() -> None:
+    """DB setup + background collectors. Deliberately NOT run at import time:
+    CI's smoke test imports this module on a runner with no Postgres.
+    Called from __main__ below and from wsgi.py (the gunicorn entrypoint)."""
+    create_table()
+    _start_bluesky_thread()
 
-create_table()
-_start_bluesky_thread()
 
 if __name__ == "__main__":
+    init_app()
     app.run(debug=False, host="0.0.0.0", port=8050, use_reloader=False)

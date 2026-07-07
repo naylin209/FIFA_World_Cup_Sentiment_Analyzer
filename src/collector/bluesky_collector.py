@@ -53,15 +53,31 @@ def _get_token(force_refresh: bool = False) -> str | None:
         return None
 
 
+def _is_expired_token(resp: requests.Response) -> bool:
+    """True if the response means our token is expired/invalid and we should re-auth.
+
+    Bluesky returns 401 for some auth failures, but an *expired* accessJwt comes back
+    as HTTP 400 with body {"error": "ExpiredToken"} — so a status check alone misses it.
+    """
+    if resp.status_code == 401:
+        return True
+    if resp.status_code == 400:
+        try:
+            return resp.json().get("error") in ("ExpiredToken", "InvalidToken", "AuthenticationRequired")
+        except ValueError:
+            return False
+    return False
+
+
 def _authenticated_get(params: dict) -> requests.Response | None:
-    """GET with Bearer auth, retrying once on 401 (expired token)."""
+    """GET with Bearer auth, retrying once on an expired/invalid token (401 or 400 ExpiredToken)."""
     global _cached_token
     for attempt in range(2):
         token = _get_token(force_refresh=(attempt > 0))
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         try:
             resp = requests.get(SEARCH_URL, params=params, headers=headers, timeout=10)
-            if resp.status_code == 401 and attempt == 0:
+            if _is_expired_token(resp) and attempt == 0:
                 _cached_token = None  # clear so next attempt forces re-auth
                 continue
             return resp
@@ -92,7 +108,7 @@ def fetch_posts(limit: int = 25) -> list[dict]:
     posts: list[dict] = []
 
     for term in SEARCH_TERMS:
-        resp = _authenticated_get({"q": term, "limit": limit})
+        resp = _authenticated_get({"q": term, "limit": limit, "sort": "latest"})
         if resp is None:
             continue
         try:
